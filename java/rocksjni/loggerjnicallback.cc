@@ -14,14 +14,20 @@
 namespace rocksdb {
 
 LoggerJniCallback::LoggerJniCallback(
-    JNIEnv* env, jobject jlogger) {
+    JNIEnv* env, jobject jlogger, jclass rdbclass) {
 
   const jint rs = env->GetJavaVM(&m_jvm);
   assert(rs == JNI_OK);
 
+  // Use the correct loader for RocksDB
+  jmethodID mid = env->GetMethodID(rdbclass, "getClassLoader", "()Ljava/lang/ClassLoader;");
+  assert(mid != nullptr);
+  jobject loader = env->CallObjectMethod((jobject)rdbclass, mid);
+
   // Note: we want to access the Java Logger instance
   // across multiple method calls, so we create a global ref
   m_jLogger = env->NewGlobalRef(jlogger);
+  m_jLoader = env->NewGlobalRef(loader);
   m_jLogMethodId = LoggerJni::getLogMethodId(env);
 }
 
@@ -49,19 +55,19 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level,
     jobject jlog_level;
     switch (log_level) {
       case rocksdb::InfoLogLevel::DEBUG_LEVEL:
-        jlog_level = InfoLogLevelJni::DEBUG_LEVEL(env);
+        jlog_level = InfoLogLevelJni::DEBUG_LEVEL(env, m_jLoader);
         break;
       case rocksdb::InfoLogLevel::INFO_LEVEL:
-        jlog_level = InfoLogLevelJni::INFO_LEVEL(env);
+        jlog_level = InfoLogLevelJni::INFO_LEVEL(env, m_jLoader);
         break;
       case rocksdb::InfoLogLevel::ERROR_LEVEL:
-        jlog_level = InfoLogLevelJni::ERROR_LEVEL(env);
+        jlog_level = InfoLogLevelJni::ERROR_LEVEL(env, m_jLoader);
         break;
       case rocksdb::InfoLogLevel::FATAL_LEVEL:
-        jlog_level = InfoLogLevelJni::FATAL_LEVEL(env);
+        jlog_level = InfoLogLevelJni::FATAL_LEVEL(env, m_jLoader);
         break;
       default:
-        jlog_level = InfoLogLevelJni::FATAL_LEVEL(env);
+        jlog_level = InfoLogLevelJni::FATAL_LEVEL(env, m_jLoader);
         break;
     }
 
@@ -117,6 +123,7 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level,
 LoggerJniCallback::~LoggerJniCallback() {
   JNIEnv* env = getJniEnv();
   env->DeleteGlobalRef(m_jLogger);
+  env->DeleteGlobalRef(m_jLoader);
   m_jvm->DetachCurrentThread();
 }
 
@@ -130,7 +137,7 @@ LoggerJniCallback::~LoggerJniCallback() {
 void Java_org_rocksdb_Logger_createNewLoggerOptions(
     JNIEnv* env, jobject jobj, jlong joptions) {
   rocksdb::LoggerJniCallback* c =
-      new rocksdb::LoggerJniCallback(env, jobj);
+      new rocksdb::LoggerJniCallback(env, jobj, env->GetObjectClass(jobj));
   // set log level
   c->SetInfoLogLevel(reinterpret_cast<rocksdb::Options*>
       (joptions)->info_log_level);
@@ -148,7 +155,7 @@ void Java_org_rocksdb_Logger_createNewLoggerOptions(
 void Java_org_rocksdb_Logger_createNewLoggerDbOptions(
     JNIEnv* env, jobject jobj, jlong jdb_options) {
   rocksdb::LoggerJniCallback* c =
-      new rocksdb::LoggerJniCallback(env, jobj);
+      new rocksdb::LoggerJniCallback(env, jobj, env->GetObjectClass(jobj));
   // set log level
   c->SetInfoLogLevel(reinterpret_cast<rocksdb::DBOptions*>
       (jdb_options)->info_log_level);

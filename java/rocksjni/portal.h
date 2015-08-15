@@ -710,41 +710,60 @@ class WriteEntryJni {
 class InfoLogLevelJni {
  public:
     // Get the DEBUG_LEVEL enum field of org.rocksdb.InfoLogLevel
-    static jobject DEBUG_LEVEL(JNIEnv* env) {
-      return getEnum(env, "DEBUG_LEVEL");
+    static jobject DEBUG_LEVEL(JNIEnv* env, jobject loader) {
+      return getEnum(env, loader, "DEBUG_LEVEL");
     }
 
     // Get the INFO_LEVEL enum field of org.rocksdb.InfoLogLevel
-    static jobject INFO_LEVEL(JNIEnv* env) {
-      return getEnum(env, "INFO_LEVEL");
+    static jobject INFO_LEVEL(JNIEnv* env, jobject loader) {
+      return getEnum(env, loader, "INFO_LEVEL");
     }
 
     // Get the WARN_LEVEL enum field of org.rocksdb.InfoLogLevel
-    static jobject WARN_LEVEL(JNIEnv* env) {
-      return getEnum(env, "WARN_LEVEL");
+    static jobject WARN_LEVEL(JNIEnv* env, jobject loader) {
+      return getEnum(env, loader, "WARN_LEVEL");
     }
 
     // Get the ERROR_LEVEL enum field of org.rocksdb.InfoLogLevel
-    static jobject ERROR_LEVEL(JNIEnv* env) {
-      return getEnum(env, "ERROR_LEVEL");
+    static jobject ERROR_LEVEL(JNIEnv* env, jobject loader) {
+      return getEnum(env, loader, "ERROR_LEVEL");
     }
 
     // Get the FATAL_LEVEL enum field of org.rocksdb.InfoLogLevel
-    static jobject FATAL_LEVEL(JNIEnv* env) {
-      return getEnum(env, "FATAL_LEVEL");
+    static jobject FATAL_LEVEL(JNIEnv* env, jobject loader) {
+      return getEnum(env, loader, "FATAL_LEVEL");
     }
 
  private:
-    // Get the java class id of org.rocksdb.WBWIRocksIterator.WriteType.
+
+    // Get the java class id of InfoLogLevel
     static jclass getJClass(JNIEnv* env) {
-      jclass jclazz = env->FindClass("org/rocksdb/InfoLogLevel");
+      return getJClass(env, nullptr);
+    }
+
+    // Get the java class id of InfoLogLevel using the specified loader
+    static jclass getJClass(JNIEnv* env, jobject loader) {
+      jclass jclazz;
+      if (loader != nullptr) {
+        static jmethodID mid = env->GetMethodID(
+            env->FindClass("java/lang/ClassLoader"),
+            "loadClass", "(Ljava/lang/String;)Ljava/lang/ClassLoader;");
+        if (mid == nullptr)
+          env->ExceptionDescribe();
+        assert(mid != nullptr);
+        jclazz = (jclass)env->CallObjectMethod(loader, mid,
+            "org/rocksdb/InfoLogLevel");
+      } else
+        jclazz = env->FindClass("org/rocksdb/InfoLogLevel");
+      if (jclazz == nullptr)
+        env->ExceptionDescribe();
       assert(jclazz != nullptr);
       return jclazz;
     }
 
-    // Get an enum field of org.rocksdb.WBWIRocksIterator.WriteType
-    static jobject getEnum(JNIEnv* env, const char name[]) {
-      jclass jclazz = getJClass(env);
+    // Get an enum field of InfoLogLevel
+    static jobject getEnum(JNIEnv* env, jobject loader, const char name[]) {
+      jclass jclazz = getJClass(env, loader);
       jfieldID jfid =
           env->GetStaticFieldID(jclazz, name,
           "Lorg/rocksdb/InfoLogLevel;");

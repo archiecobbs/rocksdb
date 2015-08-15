@@ -18,7 +18,7 @@ namespace rocksdb {
 
   class LoggerJniCallback : public Logger {
    public:
-     LoggerJniCallback(JNIEnv* env, jobject jLogger);
+     LoggerJniCallback(JNIEnv* env, jobject jLogger, jclass rdbclass);
      virtual ~LoggerJniCallback();
 
      using Logger::SetInfoLogLevel;
@@ -37,6 +37,7 @@ namespace rocksdb {
    private:
      JavaVM* m_jvm;
      jobject m_jLogger;
+     jobject m_jLoader;
      jmethodID m_jLogMethodId;
   };
 }  // namespace rocksdb
